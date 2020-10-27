@@ -1,3 +1,17 @@
+# IDE specific
+/.idea
+/.vscode
+
+# Python Server
+/.env
+__pycache__
+
+# Web Client
+# dependencies
+**/node_modules
+**/build
+npm-debug.log*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,0 +1,33 @@
+#server_status_container{
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+#server_status_text_container {
+  display: flex;
+  justify-content: right;
+  width: 70vw;
+  margin-right: -1.5rem;
+}
+
+#server_status_text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  height: 2rem;
+  width: 30%;
+  border-radius: 15px;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.server_ready {
+  background-color: darkseagreen;
+}
+
+.server_not_ready {
+  background-color: lightcoral;
+}
