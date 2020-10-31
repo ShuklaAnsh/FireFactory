@@ -32,6 +32,9 @@ npm install
 ```
 > Needs to be called from the `src/frontend` directory
 
+#### Setup data
+The audio files are expected to be in the `data` directory that you must make in the project root directory. The data directory won't be uploaded to GitHub but you can grab what audio files you want to run with from the Drive folder. The data directory must have two subdirecories: `lofi` and `non-lofi`. The respective audio files will go in these two folders.
+
 
 ## Run the Application
 1) Start the Python API backend
