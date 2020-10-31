@@ -111,12 +111,16 @@ def audio_fingerprint(data):
     '''
     Create the audio fingerprint
     
+    
     params:
         data: the audio data array of a single audio clip to create the fingerprint of
         
     returns:
         an audio fingerprint of the given data array
     '''
+    f, t, sxx = scipy.signal.spectrogram(data)
+    peaks = scipy.signal.find_peaks(f, height, threshold, distance, prominence)
+    fingerprint = fingerprint_hash(peaks)
     pass
 
 
@@ -125,15 +129,17 @@ def audio_fingerprint(data):
 
 def generate_mfcc(data):
     '''
-    Create the audio fingerprint
-    
+    Create the mfcc feature vector
+
     params:
         data: the audio data array of a single audio clip to create the MFCC vector for
         
     returns:
         an MFCC vector of the given vector
     '''
-    pass
+    
+    mfcc_data = librosa.feature.mfcc(data)
+    return mfcc_data
 
 
 # ## Data Organization
@@ -206,6 +212,7 @@ def fitness_fn(genome, mfccs, afs):
     
     return fittness_value
 
+
 def generate_genome(sound_bank):
     '''
     Creates a random genome from available sounds
@@ -218,6 +225,7 @@ def generate_genome(sound_bank):
     '''
     #TODO
     return genome
+
 
 def generate_population(pop_size, sound_bank):
     '''
@@ -237,6 +245,7 @@ def generate_population(pop_size, sound_bank):
         
     return population
 
+
 def choose_parents(population, weights)
     '''
     Choose 2 parents from population, better genomes are more likely to be choosen
@@ -249,6 +258,7 @@ def choose_parents(population, weights)
         parents: A list of 2 genomes
     '''
     return choices(population, weights=weights, k=2)
+
 
 def single_point_crossover(parents):
     '''
@@ -272,6 +282,7 @@ def single_point_crossover(parents):
     children = [child_a, child_b]
     return children
 
+
 def mutate(genome):
     '''
     Mutates values from a genome at random
@@ -285,9 +296,10 @@ def mutate(genome):
     #TODO
     return genome
 
+
 def new_gen(population, weights):
     '''
-   Creates the next generations population
+    Creates the next generations population
     
     params:
         population: list of genomes
@@ -306,6 +318,7 @@ def new_gen(population, weights):
     
     return new_population
 
+
 def genetic_algorithm(sound_bank, mfccs, afs):
     '''
     Generates a lofi audio clip using a genetic algorithm
@@ -322,8 +335,8 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     '''
     # Number of generations until exit
     generations = 100
-    # generate 6 unique melodies
-    population = generate_genomes(6, sound_bank)
+    # Generate 6 unique melodies
+    population = generate_population(6, sound_bank)
     
     for gen in range(generations)
         # Get weights
