@@ -46,12 +46,12 @@ def _get_paths():
     return lofi_file_paths, non_lofi_file_paths
 
 
-def load_data(srate=22050):
+def load_data(srate):
     '''
     Loads the data from the data folder into numpy data arrays representing the audio files.
     
     params:
-        sr: The sample rate to load the data in. Default is 22050 Hz (Good enough for now)
+        srate: The sample rate to load the data in. Default is 22050 Hz (Good enough for now)
     
     returns: an array of genre arrays. Each genre array contains audio arrays for each audio files 
         [0]: lofi data arrays
@@ -60,16 +60,15 @@ def load_data(srate=22050):
     lofi_paths, non_lofi_paths = _get_paths()
     lofi_data_array = []
     non_lofi_data_array = []
-    sr = 0
     
     # load in lofi data
     for path in lofi_paths:
-        data, sr = librosa.load(path, sr=srate)
+        data, _ = librosa.load(path, sr=srate)
         lofi_data_array.append(data)
         
     # load in non-lofi data
     for path in non_lofi_paths:
-        data, sr = librosa.load(path, sr=srate)
+        data, _ = librosa.load(path, sr=srate)
         non_lofi_data_array.append(data)
     return lofi_data_array, non_lofi_data_array
 
@@ -92,7 +91,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 # In[5]:
 
 
-def feature_extraction(data, srate=22050, hop_size=512 ):
+def feature_extraction(data, srate, hop_size=512 ):
     '''
     Extracts the features
     
@@ -100,6 +99,8 @@ def feature_extraction(data, srate=22050, hop_size=512 ):
     
     params:
         data: the audio data array of a single audio clip to extract features from
+        srate: sample rate
+        hop_length: hop length
         
     returns:
         an array of features
@@ -130,7 +131,7 @@ def feature_extraction(data, srate=22050, hop_size=512 ):
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
 # called in 'feature_extraction(data)'
-def extract_spectral(data, sr, hop_length):
+def extract_spectral(data, srate, hop_length=512):
     '''
     Extracts spectral features
     
@@ -140,17 +141,17 @@ def extract_spectral(data, sr, hop_length):
 
     params:
         data: the audio data array of a single audio clip to extract features from
-        sr: sample rate
+        srate: sample rate
         hop_length: hop length
         
     returns:
         an list of np arrays called a feature vector
     '''
     # np.array
-    centroid = librosa.feature.spectral_centroid(data, sr=sr, hop_length=hop_length) 
-    bandwidth = librosa.feature.spectral_bandwidth(data, sr=sr, hop_length=hop_length)
+    centroid = librosa.feature.spectral_centroid(data, sr=srate, hop_length=hop_length) 
+    bandwidth = librosa.feature.spectral_bandwidth(data, sr=srate, hop_length=hop_length)
     flatness = librosa.feature.spectral_flatness(data, hop_length=hop_length)
-    rolloff = librosa.feature.spectral_rolloff(data, sr=sr, hop_length=hop_length)
+    rolloff = librosa.feature.spectral_rolloff(data, sr=srate, hop_length=hop_length)
     
     # feature vector list
     feature_vector = [
@@ -226,12 +227,13 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 # In[7]:
 
 
-def generate_soundbank(dataset):
+def generate_soundbank(dataset, srate):
     '''
     Groups similar sounds using K-means clustering
     
     params:
         dataset: The dataset to group sounds for
+        srate: sample rate of the data in the dataset
         
     returns:
         groups of the sounds (bass sounds, drum sounds, etc)
@@ -244,7 +246,7 @@ def generate_soundbank(dataset):
         onset_samples = librosa.frames_to_samples(onset_frames)
         for sample in onset_samples:
             segments.append(data[sample:sample+frame_size])
-            features.append(feature_extraction(data[sample:sample+frame_size]))
+            features.append(feature_extraction(data[sample:sample+frame_size], srate))
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
@@ -274,7 +276,7 @@ def generate_soundbank(dataset):
 # In[8]:
 
 
-sound_bank = generate_soundbank(lofi)
+sound_bank = generate_soundbank(lofi, srate)
 
 
 # In[9]:
