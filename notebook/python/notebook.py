@@ -99,9 +99,58 @@ def feature_extraction(data):
         data: the audio data array of a single audio clip to extract features from
         
     returns:
-        an array of features?
+        an array of features
     '''
+    
+    srate = 22050 
+    hopSize = 512 
+    
+    #SPECTRAL FEATURES
+    spectral_features = extract_spectral(data,srate,hopSize)  #store spectral features in array
+    
     pass
+
+
+# In[ ]:
+
+
+# Taken from Jordie's 'Audio Feature Extraction' notebook
+# called in 'feature_extraction(data)'
+def extract_spectral(data, sr, hop_length):
+    '''
+    Extracts spectral features
+    
+    Called in 'feature_extraction(data)'
+    
+    Taken from Jordie's 'Audio Feature Extraction' notebook
+
+    params:
+        data: the audio data array of a single audio clip to extract features from
+        sr: sample rate
+        hop_length: hop length
+        
+    returns:
+        an list of np arrays called a feature vector
+    '''
+    # np.array
+    centroid = librosa.feature.spectral_centroid(data, sr=sr, hop_length=hop_length) 
+    bandwidth = librosa.feature.spectral_bandwidth(data, sr=sr, hop_length=hop_length)
+    flatness = librosa.feature.spectral_flatness(data, hop_length=hop_length)
+    rolloff = librosa.feature.spectral_rolloff(data, sr=sr, hop_length=hop_length)
+    
+    # feature vector list
+    feature_vector = [
+        centroid.mean(),
+        centroid.std(),
+        bandwidth.mean(),
+        bandwidth.std(),
+        flatness.mean(),
+        flatness.std(),
+        rolloff.mean(),
+        rolloff.std()
+    ]
+    
+    return feature_vector
 
 
 # In[24]:
