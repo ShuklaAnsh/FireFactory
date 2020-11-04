@@ -186,7 +186,7 @@ def k_means_clustering(sounds):
 
 # ## Genetic Algorithm
 
-# In[31]:
+# In[2]:
 
 
 def fitness_fn(genome, mfccs, afs):
@@ -208,7 +208,7 @@ def fitness_fn(genome, mfccs, afs):
     mgcc = generate_mfcc(genome)
     
     # TODO: create fitness_value based on heuristics
-    fitness value = 0
+    fitness_value = 0
     
     return fittness_value
 
@@ -224,6 +224,7 @@ def generate_genome(sound_bank):
         genome: a random genome based of available sounds
     '''
     #TODO
+    genome = []
     return genome
 
 
@@ -241,12 +242,12 @@ def generate_population(pop_size, sound_bank):
     population = []
     
     for i in range(pop_size):
-        population.append(generate_genome(sounds))
+        population.append(generate_genome(sound_bank))
         
     return population
 
 
-def choose_parents(population, weights)
+def choose_parents(population, weights):
     '''
     Choose 2 parents from population, better genomes are more likely to be choosen
     
@@ -338,7 +339,7 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     # Generate 6 unique melodies
     population = generate_population(6, sound_bank)
     
-    for gen in range(generations)
+    for gen in range(generations):
         # Get weights
         weights = []
         for genome in population:
