@@ -239,12 +239,12 @@ def generate_soundbank(dataset):
     frame_size = 2048
     segments = []
     features = []
-    for song in lofi:
-        onset_frames = librosa.onset.onset_detect(song)
+    for data in dataset:
+        onset_frames = librosa.onset.onset_detect(data)
         onset_samples = librosa.frames_to_samples(onset_frames)
         for sample in onset_samples:
-            segments.append(song[sample:sample+frame_size])
-            features.append(feature_extraction(song[sample:sample+frame_size]))
+            segments.append(data[sample:sample+frame_size])
+            features.append(feature_extraction(data[sample:sample+frame_size]))
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
