@@ -167,7 +167,7 @@ def extract_spectral(data, sr, hop_length):
     return feature_vector
 
 
-# In[7]:
+# In[ ]:
 
 
 def audio_fingerprint(data):
@@ -187,7 +187,7 @@ def audio_fingerprint(data):
     pass
 
 
-# In[8]:
+# In[ ]:
 
 
 def generate_mfcc(data):
@@ -207,7 +207,7 @@ def generate_mfcc(data):
 
 # ## Data Organization
 
-# In[9]:
+# In[ ]:
 
 
 lofi_af = [audio_fingerprint(data) for data in lofi]
@@ -223,7 +223,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[10]:
+# In[7]:
 
 
 def generate_soundbank(dataset):
@@ -242,11 +242,10 @@ def generate_soundbank(dataset):
     for song in lofi:
         onset_frames = librosa.onset.onset_detect(song)
         onset_samples = librosa.frames_to_samples(onset_frames)
-        segments.append([song[sample:sample+frame_size] for sample in onset_samples])
-        features.append(np.array([feature_extraction(song[sample:sample+frame_size]) for sample in onset_samples]))
-    
-    segments = np.concatenate(segments)
-    features = np.concatenate(features)
+        for sample in onset_samples:
+            segments.append(song[sample:sample+frame_size])
+            features.append(feature_extraction(song[sample:sample+frame_size]))
+            
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
     clusterer = sklearn.cluster.KMeans(3)
@@ -272,25 +271,25 @@ def generate_soundbank(dataset):
     return sound_groups
 
 
-# In[11]:
+# In[8]:
 
 
 sound_bank = generate_soundbank(lofi)
 
 
-# In[12]:
+# In[9]:
 
 
 ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
 
 
-# In[13]:
+# In[10]:
 
 
 ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
-# In[14]:
+# In[11]:
 
 
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
