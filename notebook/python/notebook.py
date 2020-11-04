@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import IPython.display as ipd
 from pathlib import Path
 from random import choices, randint
+import mir_eval
+import scipy
+import sklearn
 
 
 # ## Loading in the data
@@ -78,7 +81,7 @@ srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[ ]:
+# In[4]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -86,10 +89,10 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[23]:
+# In[5]:
 
 
-def feature_extraction(data):
+def feature_extraction(data, srate=22050, hop_size=512 ):
     '''
     Extracts the features
     
@@ -100,18 +103,29 @@ def feature_extraction(data):
         
     returns:
         an array of features
+            [0]: zero cross rate mean
+            [1]: zero cross rate standard deviation
+            [2]: spectral centroid mean
+            [3]: spectral centroid standard deviation
+            [4]: spectral bandwidth mean
+            [5]: spectral bandwidth standard deviation
+            [6]: spectral flatness mean
+            [7]: spectral flatness standard deviation
+            [8]: spectral rolloff mean
+            [9]: spectral rolloff standard deviation
     '''
+    # Features
+    zcr = librosa.zero_crossings(data)
     
-    srate = 22050 
-    hopSize = 512 
+    features = [zcr.mean(), zcr.std()]
     
     #SPECTRAL FEATURES
-    spectral_features = extract_spectral(data,srate,hopSize)  #store spectral features in array
+    spectral_features = extract_spectral(data, srate, hop_size)  #store spectral features in array
     
-    pass
+    return np.concatenate([features, spectral_features])
 
 
-# In[ ]:
+# In[6]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -153,7 +167,7 @@ def extract_spectral(data, sr, hop_length):
     return feature_vector
 
 
-# In[24]:
+# In[7]:
 
 
 def audio_fingerprint(data):
@@ -173,7 +187,7 @@ def audio_fingerprint(data):
     pass
 
 
-# In[25]:
+# In[8]:
 
 
 def generate_mfcc(data):
@@ -193,49 +207,98 @@ def generate_mfcc(data):
 
 # ## Data Organization
 
-# In[26]:
+# In[9]:
 
 
 lofi_af = [audio_fingerprint(data) for data in lofi]
 non_lofi_af = [audio_fingerprint(data) for data in non_lofi]
 
 
-# In[27]:
+# In[ ]:
 
 
 lofi_mfccs = [generate_mfcc(data) for data in lofi]
 non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 
-# In[28]:
-
-
-lofi_features = [feature_extraction(data) for data in lofi]
-
-## sounds = do_some_stuff_with_features
-
-
 # ## Sound Bank Generation
 
-# In[30]:
+# In[10]:
 
 
-def k_means_clustering(sounds):
+def generate_soundbank(dataset):
     '''
     Groups similar sounds using K-means clustering
     
     params:
-        sounds: the sounds in lofi music (drums, bass, high_notes, etc)
+        dataset: The dataset to group sounds for
         
     returns:
         groups of the sounds (bass sounds, drum sounds, etc)
     '''
-    pass
+    frame_size = 2048
+    segments = []
+    features = []
+    for song in lofi:
+        onset_frames = librosa.onset.onset_detect(song)
+        onset_samples = librosa.frames_to_samples(onset_frames)
+        segments.append([song[sample:sample+frame_size] for sample in onset_samples])
+        features.append(np.array([feature_extraction(song[sample:sample+frame_size]) for sample in onset_samples]))
+    
+    segments = np.concatenate(segments)
+    features = np.concatenate(features)
+    min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
+    scaled_features = min_max_scaler.fit_transform(features)
+    clusterer = sklearn.cluster.KMeans(3)
+    labels = clusterer.fit_predict(scaled_features)
+    
+    plt.figure(figsize=(20,5))
+    plt.scatter(scaled_features[labels==0,0], scaled_features[labels==0,2], c='r')
+    plt.scatter(scaled_features[labels==1,0], scaled_features[labels==1,2], c='g')
+    plt.scatter(scaled_features[labels==2,0], scaled_features[labels==2,2], c='b')
+    plt.xlabel('Zero Cross Rate (Scaled)')
+    plt.ylabel('Spectral Centroid (Scaled)')
+    plt.legend(['Class 0', 'Class 1', 'Class 2'])
+    plt.show()
+    
+    sound_groups = [[], [], []]
+    for idx, segment in enumerate(segments):
+        if labels[idx] == 0:
+            sound_groups[0].append(segment)
+        elif labels[idx] == 1:
+            sound_groups[1].append(segment)
+        else:
+            sound_groups[2].append(segment)
+    return sound_groups
+
+
+# In[11]:
+
+
+sound_bank = generate_soundbank(lofi)
+
+
+# In[12]:
+
+
+ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
+
+
+# In[13]:
+
+
+ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
+
+
+# In[14]:
+
+
+ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
 
 
 # ## Genetic Algorithm
 
-# In[2]:
+# In[ ]:
 
 
 def fitness_fn(genome, mfccs, afs):
