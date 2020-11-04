@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[1]:
 
 
 import numpy as np
@@ -9,12 +9,13 @@ import librosa
 import matplotlib.pyplot as plt
 import IPython.display as ipd
 from pathlib import Path
+from random import choices, randint
 
 
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[14]:
+# In[2]:
 
 
 def _get_paths():
@@ -70,14 +71,14 @@ def load_data(srate=22050):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[15]:
+# In[3]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[16]:
+# In[ ]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -234,7 +235,7 @@ def k_means_clustering(sounds):
 
 # ## Genetic Algorithm
 
-# In[31]:
+# In[2]:
 
 
 def fitness_fn(genome, mfccs, afs):
@@ -249,11 +250,124 @@ def fitness_fn(genome, mfccs, afs):
         afs: the Audio Fingerprints of Lofi and non-Lofi
         
     returns:
-        a data array of generated lofi
+        fitness_value: A rating based on all produced heuristics
     '''
+    # Heuristics
     af = audio_fingerprint(genome)
     mgcc = generate_mfcc(genome)
-    pass
+    
+    # TODO: create fitness_value based on heuristics
+    fitness_value = 0
+    
+    return fittness_value
+
+
+def generate_genome(sound_bank):
+    '''
+    Creates a random genome from available sounds
+    
+    params:
+        sounds: the possible sounds to be uses for creating genomes
+        
+    returns:
+        genome: a random genome based of available sounds
+    '''
+    #TODO
+    genome = []
+    return genome
+
+
+def generate_population(pop_size, sound_bank):
+    '''
+    Creates pop_size number of genomes from available sounds
+    
+    params:
+        pop_size: the number of genomes to produce
+        sounds: the possible sounds to be uses for creating genomes
+        
+    returns:
+        population: a list of genomes with length of pop_size
+    '''
+    population = []
+    
+    for i in range(pop_size):
+        population.append(generate_genome(sound_bank))
+        
+    return population
+
+
+def choose_parents(population, weights):
+    '''
+    Choose 2 parents from population, better genomes are more likely to be choosen
+    
+    params:
+        population: list of genomes
+        weights: list of weights
+        
+    returns:
+        parents: A list of 2 genomes
+    '''
+    return choices(population, weights=weights, k=2)
+
+
+def single_point_crossover(parents):
+    '''
+    Creates 2 new children from sections of both parents
+    
+    params:
+        parents: A list of 2 parents genomes
+        
+    returns:
+        children: 2 new genomes based of a combination of both parents
+    '''
+    parent_a = parents[0]
+    parent_b = parents[1]
+    # Ensure a and b have same length
+    if len(parent_a) != len(parent_b):
+        raise ValueError("Genomes not equal length\n")
+        
+    split_point = randint(1, len(parent_a)-1)
+    child_a = parent_a[:split_pont] + parent_b[split_point:]
+    child_b = parent_b[:split_pont] + parent_a[split_point:]
+    children = [child_a, child_b]
+    return children
+
+
+def mutate(genome):
+    '''
+    Mutates values from a genome at random
+    
+    params:
+        genome: a generated audio data array
+        
+    returns:
+        mutated_genome: a mutated verion of the inputed genome
+    '''
+    #TODO
+    return genome
+
+
+def new_gen(population, weights):
+    '''
+    Creates the next generations population
+    
+    params:
+        population: list of genomes
+        weights: list of weights
+        
+    returns:
+        new_population: A list of genomes ordered by rank
+    '''
+    new_population = []
+    for i in range(len(population)/2):
+        parents = choose_parents(population, weights)
+        children = single_point_crossover(parents)
+        for i in range(children):
+            children[i] = mutate(children[i])
+        new_population += children
+    
+    return new_population
+
 
 def genetic_algorithm(sound_bank, mfccs, afs):
     '''
@@ -269,7 +383,21 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     returns:
         a data array of generated lofi
     '''
-    pass
+    # Number of generations until exit
+    generations = 100
+    # Generate 6 unique melodies
+    population = generate_population(6, sound_bank)
+    
+    for gen in range(generations):
+        # Get weights
+        weights = []
+        for genome in population:
+            weights.append(fitness_fn(genome, mfcss, afs))
+            
+        # Create next generation genomes
+        population = new_gen(population, weights)
+        
+    return population
 
 
 # In[ ]:

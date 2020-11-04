@@ -52,3 +52,6 @@ npm start
 ## Run Notebook
 #### JupyterLab
 Run `jupyter lab` and select `notebook.ipynb`
+
+## Convert Notebooks to Python
+> Run `python3 convert.py notebook` from the root directory
