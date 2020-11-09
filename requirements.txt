@@ -2,3 +2,6 @@ flask
 numpy
 matplotlib
 librosa
+mir_eval
+scipy
+sklearn
