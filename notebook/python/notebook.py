@@ -78,7 +78,7 @@ srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[ ]:
+# In[4]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -153,7 +153,46 @@ def extract_spectral(data, sr, hop_length):
     return feature_vector
 
 
-# In[24]:
+# In[29]:
+
+
+# interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
+# finds highest magnitude of freq in a most important frequency range 
+# produces 5 frequencies in a frame, the frames "fingerprint"
+# wholes song has multiple fingerprints and all can be used towards 
+ranges = (40, 80, 120, 180, 300)
+
+def getIndex(freq):
+    i = 0
+    while(ranges[i] < freq):
+        i += 1
+    return i
+
+def fingerprint_hash(result):
+    freqList = []
+    for t in range(0, len(result)):
+        highScores = {}
+        freqNumbers = {}
+        for freq in range(0, 300): 
+            mag = result[t][freq] 
+            index = getIndex(freq)
+            if index in highScores:
+                if mag > highScores[index]:
+                    highScores[index] = mag
+                    freqNumbers[index] = freq
+            else:
+                highScores[index] = mag
+                freqNumbers[index] = freq
+        
+        fingerprint = ''
+        for num in freqNumbers:
+            fingerprint += str(freqNumbers[num])
+        freqList.append(fingerprint)
+    
+    return freqList
+
+
+# In[28]:
 
 
 def audio_fingerprint(data):
@@ -167,13 +206,22 @@ def audio_fingerprint(data):
     returns:
         an audio fingerprint of the given data array
     '''
-    f, t, sxx = scipy.signal.spectrogram(data)
-    peaks = scipy.signal.find_peaks(f, height, threshold, distance, prominence)
-    fingerprint = fingerprint_hash(peaks)
-    pass
+    frameSize = 22050
+    i = 0
+
+    results = []
+    while(i < len(data)):
+        frame = data[i:i+frameSize]
+        mag = np.abs(np.fft.fft(frame))
+        mag = mag[0:int(len(mag)/2)]
+        results.append(mag)
+        i += frameSize
+       
+    fingerprint = fingerprint_hash(results)
+    return fingerprint
 
 
-# In[25]:
+# In[26]:
 
 
 def generate_mfcc(data):
