@@ -45,7 +45,6 @@ def _get_paths():
     
     return lofi_file_paths, non_lofi_file_paths
 
-
 def load_data(srate):
     '''
     Loads the data from the data folder into numpy data arrays representing the audio files.
@@ -73,14 +72,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[3]:
+# In[6]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[4]:
+# In[8]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -88,7 +87,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[5]:
+# In[10]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -126,7 +125,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[6]:
+# In[12]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -224,7 +223,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[7]:
+# In[14]:
 
 
 def generate_soundbank(dataset, srate):
@@ -238,15 +237,24 @@ def generate_soundbank(dataset, srate):
     returns:
         groups of the sounds (bass sounds, drum sounds, etc)
     '''
-    frame_size = 2048
+    # pre-onset buffer are the samples before the onset starts
+    # post-onset buffer are the samples after the onset starts
+    # pre-onset + post-onset = frame size
+    pre_onset_buffer = 1024
+    post_onset_buffer = 3072
     segments = []
     features = []
     for data in dataset:
         onset_frames = librosa.onset.onset_detect(data)
         onset_samples = librosa.frames_to_samples(onset_frames)
-        for sample in onset_samples:
-            segments.append(data[sample:sample+frame_size])
-            features.append(feature_extraction(data[sample:sample+frame_size], srate))
+        for onset in onset_samples:
+            frame_start = onset - pre_onset_buffer
+            frame_end = onset + post_onset_buffer
+            if frame_start < 0 or frame_end > len(data):
+                continue
+            segment = data[frame_start:frame_end]
+            segments.append(segment)
+            features.append(feature_extraction(segment, srate))
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
@@ -273,25 +281,25 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[8]:
+# In[16]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
 
 
-# In[9]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
 
 
-# In[10]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
-# In[11]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
