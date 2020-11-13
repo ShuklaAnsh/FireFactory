@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[13]:
+# In[2]:
 
 
 def _get_paths():
@@ -72,14 +72,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[14]:
+# In[3]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[ ]:
+# In[4]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -165,6 +165,20 @@ def extract_spectral(data, srate, hop_length=512):
     ]
     
     return feature_vector
+
+
+# In[14]:
+
+
+#maps a signal of pulse locations 
+def get_PLP(data):
+    PLP = librosa.beat.plp(data)
+    return PLP
+
+#returns tempo and beat event locations in the track
+def get_beat_track(data):
+    tempo, beats = librosa.beat.beat_track(data)
+    return tempo, beats
 
 
 # In[ ]:
