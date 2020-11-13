@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[3]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[2]:
+# In[1]:
 
 
 def _get_paths():
@@ -73,14 +73,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[3]:
+# In[4]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[4]:
+# In[5]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -168,7 +168,7 @@ def extract_spectral(data, srate, hop_length=512):
     return feature_vector
 
 
-# In[29]:
+# In[7]:
 
 
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
@@ -202,12 +202,13 @@ def fingerprint_hash(result):
         fingerprint = ''
         for num in freqNumbers:
             fingerprint += str(freqNumbers[num])
-        freqList.append(fingerprint)
+        if fingerprint not in freqList:
+            freqList.append(fingerprint)
     
     return freqList
 
 
-# In[28]:
+# In[6]:
 
 
 def audio_fingerprint(data):
@@ -221,7 +222,8 @@ def audio_fingerprint(data):
     returns:
         an audio fingerprint of the given data array
     '''
-    frameSize = 22050
+    #corresponds to 4 seconds of audio
+    frameSize = 88200
     i = 0
 
     results = []
@@ -236,7 +238,7 @@ def audio_fingerprint(data):
     return fingerprint
 
 
-# In[26]:
+# In[ ]:
 
 
 def generate_mfcc(data):
