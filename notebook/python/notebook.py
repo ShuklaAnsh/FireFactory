@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[12]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[2]:
+# In[13]:
 
 
 def _get_paths():
@@ -72,14 +72,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[6]:
+# In[14]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[8]:
+# In[ ]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -87,7 +87,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[10]:
+# In[16]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -125,7 +125,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[12]:
+# In[17]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -223,7 +223,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[14]:
+# In[31]:
 
 
 def generate_soundbank(dataset, srate):
@@ -242,12 +242,16 @@ def generate_soundbank(dataset, srate):
     # pre-onset + post-onset = frame size
     pre_onset_buffer = 1024
     post_onset_buffer = 3072
+    gaps = []
     segments = []
     features = []
     for data in dataset:
         onset_frames = librosa.onset.onset_detect(data)
         onset_samples = librosa.frames_to_samples(onset_frames)
-        for onset in onset_samples:
+        for idx in range(len(onset_samples)):
+            onset = onset_samples[idx]
+            
+            # Extract Main Audio Segments
             frame_start = onset - pre_onset_buffer
             frame_end = onset + post_onset_buffer
             if frame_start < 0 or frame_end > len(data):
@@ -255,6 +259,17 @@ def generate_soundbank(dataset, srate):
             segment = data[frame_start:frame_end]
             segments.append(segment)
             features.append(feature_extraction(segment, srate))
+            
+            # Extract Background Segments (Gaps)
+            if idx+1 >= len(onset_samples):
+                continue
+            onset = onset_samples[idx]
+            start_gap_sample = sample + post_onset_buffer
+            end_gap_sample = onset_samples[idx+1] - pre_onset_buffer
+            gap = []
+            for gap_sample in range(start_gap_sample, end_gap_sample+1):
+                gap.append(data[gap_sample])
+            gaps.append(gap)
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
@@ -270,7 +285,7 @@ def generate_soundbank(dataset, srate):
     plt.legend(['Class 0', 'Class 1', 'Class 2'])
     plt.show()
     
-    sound_groups = [[], [], []]
+    sound_groups = [[], [], [], gaps]
     for idx, segment in enumerate(segments):
         if labels[idx] == 0:
             sound_groups[0].append(segment)
@@ -281,7 +296,7 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[16]:
+# In[32]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
@@ -303,6 +318,12 @@ ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
+
+
+# In[ ]:
+
+
+ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 
 # ## Genetic Algorithm
