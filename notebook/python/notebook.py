@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[12]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[1]:
+# In[13]:
 
 
 def _get_paths():
@@ -44,7 +44,6 @@ def _get_paths():
             non_lofi_file_paths.append(non_lofi_item)
     
     return lofi_file_paths, non_lofi_file_paths
-
 
 def load_data(srate):
     '''
@@ -73,14 +72,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[4]:
+# In[14]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[5]:
+# In[ ]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -88,7 +87,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[5]:
+# In[16]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -126,7 +125,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[6]:
+# In[17]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -274,7 +273,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[7]:
+# In[31]:
 
 
 def generate_soundbank(dataset, srate):
@@ -288,15 +287,39 @@ def generate_soundbank(dataset, srate):
     returns:
         groups of the sounds (bass sounds, drum sounds, etc)
     '''
-    frame_size = 2048
+    # pre-onset buffer are the samples before the onset starts
+    # post-onset buffer are the samples after the onset starts
+    # pre-onset + post-onset = frame size
+    pre_onset_buffer = 1024
+    post_onset_buffer = 3072
+    gaps = []
     segments = []
     features = []
     for data in dataset:
         onset_frames = librosa.onset.onset_detect(data)
         onset_samples = librosa.frames_to_samples(onset_frames)
-        for sample in onset_samples:
-            segments.append(data[sample:sample+frame_size])
-            features.append(feature_extraction(data[sample:sample+frame_size], srate))
+        for idx in range(len(onset_samples)):
+            onset = onset_samples[idx]
+            
+            # Extract Main Audio Segments
+            frame_start = onset - pre_onset_buffer
+            frame_end = onset + post_onset_buffer
+            if frame_start < 0 or frame_end > len(data):
+                continue
+            segment = data[frame_start:frame_end]
+            segments.append(segment)
+            features.append(feature_extraction(segment, srate))
+            
+            # Extract Background Segments (Gaps)
+            if idx+1 >= len(onset_samples):
+                continue
+            onset = onset_samples[idx]
+            start_gap_sample = sample + post_onset_buffer
+            end_gap_sample = onset_samples[idx+1] - pre_onset_buffer
+            gap = []
+            for gap_sample in range(start_gap_sample, end_gap_sample+1):
+                gap.append(data[gap_sample])
+            gaps.append(gap)
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
@@ -312,7 +335,7 @@ def generate_soundbank(dataset, srate):
     plt.legend(['Class 0', 'Class 1', 'Class 2'])
     plt.show()
     
-    sound_groups = [[], [], []]
+    sound_groups = [[], [], [], gaps]
     for idx, segment in enumerate(segments):
         if labels[idx] == 0:
             sound_groups[0].append(segment)
@@ -323,28 +346,34 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[8]:
+# In[32]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
 
 
-# In[9]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
 
 
-# In[10]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
-# In[11]:
+# In[ ]:
 
 
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
+
+
+# In[ ]:
+
+
+ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 
 # ## Genetic Algorithm
@@ -373,7 +402,7 @@ def fitness_fn(genome, mfccs, afs):
     # TODO: create fitness_value based on heuristics
     fitness_value = 0
     
-    return fittness_value
+    return fitness_value
 
 
 def generate_genome(sound_bank):
@@ -441,8 +470,8 @@ def single_point_crossover(parents):
         raise ValueError("Genomes not equal length\n")
         
     split_point = randint(1, len(parent_a)-1)
-    child_a = parent_a[:split_pont] + parent_b[split_point:]
-    child_b = parent_b[:split_pont] + parent_a[split_point:]
+    child_a = parent_a[:split_point] + parent_b[split_point:]
+    child_b = parent_b[:split_point] + parent_a[split_point:]
     children = [child_a, child_b]
     return children
 
