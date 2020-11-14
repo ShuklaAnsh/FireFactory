@@ -29,7 +29,7 @@
 # 
 # 
 
-# In[2]:
+# In[ ]:
 
 
 import numpy as np
@@ -52,7 +52,7 @@ import sklearn
 # ### Zero cross rate
 # Often used to classify percussive sounds. A large number of zero crossings implies that there is no dominant low-frequency oscillation. 
 
-# In[3]:
+# In[ ]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -109,7 +109,7 @@ def feature_extraction(data, srate, hop_size=512 ):
 # 
 # The spectral rolloff point has been used to distinguish between voiced and unvoiced speech, speech/music discrimination, music genre classification, acoustic scene recognition, and music mood classification. 
 
-# In[4]:
+# In[ ]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -157,7 +157,7 @@ def extract_spectral(data, srate, hop_length=512):
     return feature_vector
 
 
-# In[5]:
+# In[ ]:
 
 
 #load audio samples
@@ -171,7 +171,7 @@ lofi_in1, _ = librosa.load("2019-06-25_-_Bobbin_-_www.FesliyanStudios.com_-_Davi
 lofi_in2, _ = librosa.load("Ambivert by _ e s c p _ [ Electronica _ Lo-Fi _ Synthwave _ Chillwave ] _ free-stock-music.com.wav", sr=sr)
 
 
-# In[6]:
+# In[ ]:
 
 
 #Original audio
@@ -183,7 +183,7 @@ display(Audio(lofi_in1, rate=sr))
 display(Audio(lofi_in2, rate=sr))
 
 
-# In[8]:
+# In[ ]:
 
 
 #display audio signal waveforms
@@ -210,7 +210,7 @@ plt.xlabel("Time")
 # fig.tight_layout() #space the subplots out
 
 
-# In[9]:
+# In[ ]:
 
 
 #plot magnitude spectrums
@@ -260,7 +260,7 @@ plt.xlim(0, 1000) #show frequencies from 0 to 1000
 plt.ylim(0.0, 0.07) #show magnitude from 0.o to 0.07
 
 
-# In[10]:
+# In[ ]:
 
 
 #extract features from audio
@@ -284,7 +284,7 @@ print(lofi2_features)
 # | lofi1 | 0.037 | 0.188 | 1773 | 2379 | 2618 | 1070 | 2.04e-3 | 7.35e-3 | 3013 | 3652 |
 # | lofi2 | 0.028 | 0.164 | 1310 | 884 | 1882 | 727 | 5.65e-4 | 2.27e-2 | 2527 | 2134 |
 
-# In[11]:
+# In[ ]:
 
 
 #Define a helper function to normalize the spectral centroid for visualization:
@@ -294,7 +294,7 @@ def normalize(x, axis=0):
 
 # ### We will now use 1 audio file (lofi song 1) to visualize spectral centroid, bandwidth, flatness and rolloff.
 
-# In[12]:
+# In[ ]:
 
 
 #central spectroid
@@ -316,7 +316,7 @@ plt.plot(t, normalize(spectral_centroids), color='r') # normalize for visualizat
 plt.xlim(40, 60) #show time from 0:40 to 1:00
 
 
-# In[43]:
+# In[ ]:
 
 
 #zero crossing rate
@@ -328,7 +328,7 @@ plt.xlim(40, 60) #show time from 0:40 to 1:00
 # plt.plot(zcr[0]) # normalize for visualization purposes
 
 
-# In[13]:
+# In[ ]:
 
 
 #spectral bandwidth
@@ -354,7 +354,7 @@ plt.legend(('p = 2', 'p = 3', 'p = 4'))
 plt.xlim(40, 50) #show frequencies from 0 to 1000
 
 
-# In[26]:
+# In[ ]:
 
 
 #flatness
@@ -372,7 +372,7 @@ plt.plot(t, normalize(spectral_flatness), color='r') # normalize for visualizati
 plt.xlim(40, 60) #show time from 0:40 to 1:00
 
 
-# In[17]:
+# In[ ]:
 
 
 #spectral rolloff
@@ -390,7 +390,7 @@ plt.plot(t, normalize(spectral_rolloff), color='r') # normalize for visualizatio
 plt.xlim(40, 60) #show time from 0:40 to 1:00
 
 
-# In[33]:
+# In[ ]:
 
 
 plt.figure(figsize=(20,6))
@@ -398,7 +398,7 @@ plt.title("Lofi Song 1", fontsize=20)
 librosa.display.waveplot(lofi_in1, sr=sr, alpha=0.4) #Plot the waveform:
 
 plt.plot(t, normalize(spectral_centroids), color='r') # central spectroid
-plt.plot(t, normalize(spectral_flatness), color='orange') # 
+plt.plot(t, normalize(spectral_flatness), color='orange') # flatness
 plt.plot(t, normalize(spectral_rolloff), color='y') #
 
 plt.legend(('spectral centroid', 'flatness', 'rolloff'))
