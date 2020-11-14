@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[13]:
+# In[2]:
 
 
 def _get_paths():
@@ -72,7 +72,7 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[14]:
+# In[3]:
 
 
 srate = 22050
@@ -87,7 +87,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[16]:
+# In[5]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -115,7 +115,7 @@ def feature_extraction(data, srate, hop_size=512 ):
             [9]: spectral rolloff standard deviation
     '''
     # Features
-    zcr = librosa.zero_crossings(data)
+    zcr = librosa.feature.zero_crossing_rate(data)
     
     features = [zcr.mean(), zcr.std()]
     
@@ -125,7 +125,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[17]:
+# In[6]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -223,7 +223,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[31]:
+# In[7]:
 
 
 def generate_soundbank(dataset, srate):
@@ -264,7 +264,7 @@ def generate_soundbank(dataset, srate):
             if idx+1 >= len(onset_samples):
                 continue
             onset = onset_samples[idx]
-            start_gap_sample = sample + post_onset_buffer
+            start_gap_sample = onset + post_onset_buffer
             end_gap_sample = onset_samples[idx+1] - pre_onset_buffer
             gap = []
             for gap_sample in range(start_gap_sample, end_gap_sample+1):
@@ -296,7 +296,7 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[32]:
+# In[8]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
