@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import sklearn
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[13]:
+# In[2]:
 
 
 def _get_paths():
@@ -72,14 +72,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[14]:
+# In[3]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[ ]:
+# In[5]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -167,7 +167,7 @@ def extract_spectral(data, srate, hop_length=512):
     return feature_vector
 
 
-# In[7]:
+# In[14]:
 
 
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
@@ -207,10 +207,10 @@ def fingerprint_hash(result):
     return freqList
 
 
-# In[6]:
+# In[13]:
 
 
-def audio_fingerprint(data):
+def audio_fingerprint(data, srate):
     '''
     Create the audio fingerprint
     
@@ -222,7 +222,7 @@ def audio_fingerprint(data):
         an audio fingerprint of the given data array
     '''
     #corresponds to 4 seconds of audio
-    frameSize = 88200
+    frameSize = 4 * srate
     i = 0
 
     results = []
@@ -235,6 +235,56 @@ def audio_fingerprint(data):
        
     fingerprint = fingerprint_hash(results)
     return fingerprint
+
+
+# In[8]:
+
+
+finger_print = audio_fingerprint(lofi[0], srate)
+print(finger_print)
+
+
+# In[16]:
+
+
+def create_fingerprint_hashmap(data, paths):
+    fingerprint_hashes = {}
+    
+    for i in range(len(data)):
+        song_name = str(paths[i])[13:]
+        fingerprint = audio_fingerprint(data[i], srate)
+        for a_hash in fingerprint:
+            if a_hash in fingerprint_hashes:
+                fingerprint_hashes[a_hash].append(song_name)
+            else:
+                insert = [song_name]
+                fingerprint_hashes[a_hash] = insert
+                
+    return fingerprint_hashes
+                
+
+
+# In[19]:
+
+
+lofi_paths, non_lofi_paths = _get_paths()
+hashmap = create_fingerprint_hashmap(lofi, lofi_paths)
+max_len = 0
+
+test_fp = audio_fingerprint(lofi[51], srate)
+print(str(lofi_paths[51])[13:])
+
+song_scores = {}
+
+for fingerprint in test_fp:
+    song_names = hashmap[fingerprint]
+    for song_name in song_names:
+        if song_name in song_scores:
+            song_scores[song_name] += 1
+        else:
+            song_scores[song_name] = 1
+            
+print(song_scores)
 
 
 # In[ ]:
@@ -402,7 +452,7 @@ def fitness_fn(genome, mfccs, afs):
     # TODO: create fitness_value based on heuristics
     fitness_value = 0
     
-    return fitness_value
+    return fittness_value
 
 
 def generate_genome(sound_bank):
@@ -470,8 +520,8 @@ def single_point_crossover(parents):
         raise ValueError("Genomes not equal length\n")
         
     split_point = randint(1, len(parent_a)-1)
-    child_a = parent_a[:split_point] + parent_b[split_point:]
-    child_b = parent_b[:split_point] + parent_a[split_point:]
+    child_a = parent_a[:split_pont] + parent_b[split_point:]
+    child_b = parent_b[:split_pont] + parent_a[split_point:]
     children = [child_a, child_b]
     return children
 
