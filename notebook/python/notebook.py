@@ -92,7 +92,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[5]:
+# In[ ]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -174,19 +174,6 @@ def extract_spectral(data, srate, hop_length=512):
 
 # In[14]:
 
-
-#maps a signal of pulse locations 
-def get_PLP(data):
-    PLP = librosa.beat.plp(data)
-    return PLP
-
-#returns tempo and beat event locations in the track
-def get_beat_track(data):
-    tempo, beats = librosa.beat.beat_track(data)
-    return tempo, beats
-
-
-# In[ ]:
 
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
 # finds highest magnitude of freq in a most important frequency range 
