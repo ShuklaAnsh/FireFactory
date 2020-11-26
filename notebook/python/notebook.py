@@ -658,7 +658,7 @@ def genetic_algorithm(sound_bank, mfccs, afs):
         a data array of generated lofi
     '''
     # Number of generations until exit
-    generations = 1000
+    generations = 10
     # Generate 6 unique melodies
     population = generate_population(10, sound_bank)
     
@@ -703,9 +703,7 @@ print(weights)
 genome_samples = np.array([])
 for sound in population[6]:
     genome_samples = np.append(genome_samples, sound)
-song = population[6]
-print(song)
-ipd.Audio(song, rate=22050)
+ipd.Audio(genome_samples, rate=22050)
 
 
 # In[ ]:
