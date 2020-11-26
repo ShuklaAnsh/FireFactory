@@ -79,7 +79,7 @@ srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[4]:
+# In[5]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -87,7 +87,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[16]:
+# In[5]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -115,7 +115,7 @@ def feature_extraction(data, srate, hop_size=512 ):
             [9]: spectral rolloff standard deviation
     '''
     # Features
-    zcr = librosa.zero_crossings(data)
+    zcr = librosa.feature.zero_crossing_rate(data)
     
     features = [zcr.mean(), zcr.std()]
     
@@ -125,7 +125,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[17]:
+# In[6]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -183,8 +183,47 @@ def get_beat_track(data):
 
 # In[ ]:
 
+# interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
+# finds highest magnitude of freq in a most important frequency range 
+# produces 5 frequencies in a frame, the frames "fingerprint"
+# wholes song has multiple fingerprints and all can be used towards 
+ranges = (40, 80, 120, 180, 300)
 
-def audio_fingerprint(data):
+def getIndex(freq):
+    i = 0
+    while(ranges[i] < freq):
+        i += 1
+    return i
+
+def fingerprint_hash(result):
+    freqList = []
+    for t in range(0, len(result)):
+        highScores = {}
+        freqNumbers = {}
+        for freq in range(0, 300): 
+            mag = result[t][freq] 
+            index = getIndex(freq)
+            if index in highScores:
+                if mag > highScores[index]:
+                    highScores[index] = mag
+                    freqNumbers[index] = freq
+            else:
+                highScores[index] = mag
+                freqNumbers[index] = freq
+        
+        fingerprint = ''
+        for num in freqNumbers:
+            fingerprint += str(freqNumbers[num])
+        if fingerprint not in freqList:
+            freqList.append(fingerprint)
+    
+    return freqList
+
+
+# In[13]:
+
+
+def audio_fingerprint(data, srate):
     '''
     Create the audio fingerprint
     
@@ -195,10 +234,70 @@ def audio_fingerprint(data):
     returns:
         an audio fingerprint of the given data array
     '''
-    f, t, sxx = scipy.signal.spectrogram(data)
-    peaks = scipy.signal.find_peaks(f, height, threshold, distance, prominence)
-    fingerprint = fingerprint_hash(peaks)
-    pass
+    #corresponds to 4 seconds of audio
+    frameSize = 4 * srate
+    i = 0
+
+    results = []
+    while(i < len(data)):
+        frame = data[i:i+frameSize]
+        mag = np.abs(np.fft.fft(frame))
+        mag = mag[0:int(len(mag)/2)]
+        results.append(mag)
+        i += frameSize
+       
+    fingerprint = fingerprint_hash(results)
+    return fingerprint
+
+
+# In[8]:
+
+
+finger_print = audio_fingerprint(lofi[0], srate)
+print(finger_print)
+
+
+# In[16]:
+
+
+def create_fingerprint_hashmap(data, paths):
+    fingerprint_hashes = {}
+    
+    for i in range(len(data)):
+        song_name = str(paths[i])[13:]
+        fingerprint = audio_fingerprint(data[i], srate)
+        for a_hash in fingerprint:
+            if a_hash in fingerprint_hashes:
+                fingerprint_hashes[a_hash].append(song_name)
+            else:
+                insert = [song_name]
+                fingerprint_hashes[a_hash] = insert
+                
+    return fingerprint_hashes
+                
+
+
+# In[19]:
+
+
+lofi_paths, non_lofi_paths = _get_paths()
+hashmap = create_fingerprint_hashmap(lofi, lofi_paths)
+max_len = 0
+
+test_fp = audio_fingerprint(lofi[51], srate)
+print(str(lofi_paths[51])[13:])
+
+song_scores = {}
+
+for fingerprint in test_fp:
+    song_names = hashmap[fingerprint]
+    for song_name in song_names:
+        if song_name in song_scores:
+            song_scores[song_name] += 1
+        else:
+            song_scores[song_name] = 1
+            
+print(song_scores)
 
 
 # In[ ]:
@@ -237,7 +336,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[31]:
+# In[7]:
 
 
 def generate_soundbank(dataset, srate):
@@ -278,7 +377,7 @@ def generate_soundbank(dataset, srate):
             if idx+1 >= len(onset_samples):
                 continue
             onset = onset_samples[idx]
-            start_gap_sample = sample + post_onset_buffer
+            start_gap_sample = onset + post_onset_buffer
             end_gap_sample = onset_samples[idx+1] - pre_onset_buffer
             gap = []
             for gap_sample in range(start_gap_sample, end_gap_sample+1):
@@ -310,7 +409,7 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[32]:
+# In[8]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
