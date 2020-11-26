@@ -1,24 +1,29 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import IPython.display as ipd
-from pathlib import Path
-from random import choices, randint
 import mir_eval
 import scipy
 import sklearn
+
+from pathlib import Path
+from random import choices, randint, choice, shuffle, random
+from numpy import dot
+from numpy.linalg import norm
+from scipy.interpolate import interp1d
+from heapq import nsmallest
 
 
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[2]:
+# In[ ]:
 
 
 def _get_paths():
@@ -72,7 +77,7 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[3]:
+# In[ ]:
 
 
 srate = 22050
@@ -87,7 +92,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[5]:
+# In[ ]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -125,7 +130,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[6]:
+# In[ ]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -170,19 +175,6 @@ def extract_spectral(data, srate, hop_length=512):
 # In[14]:
 
 
-#maps a signal of pulse locations 
-def get_PLP(data):
-    PLP = librosa.beat.plp(data)
-    return PLP
-
-#returns tempo and beat event locations in the track
-def get_beat_track(data):
-    tempo, beats = librosa.beat.beat_track(data)
-    return tempo, beats
-
-
-# In[ ]:
-
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
 # finds highest magnitude of freq in a most important frequency range 
 # produces 5 frequencies in a frame, the frames "fingerprint"
@@ -226,8 +218,7 @@ def fingerprint_hash(result):
 def audio_fingerprint(data, srate):
     '''
     Create the audio fingerprint
-    
-    
+
     params:
         data: the audio data array of a single audio clip to create the fingerprint of
         
@@ -323,7 +314,7 @@ def generate_mfcc(data):
 # In[ ]:
 
 
-lofi_af = [audio_fingerprint(data) for data in lofi]
+#lofi_af = [audio_fingerprint(data) for data in lofi]
 non_lofi_af = [audio_fingerprint(data) for data in non_lofi]
 
 
@@ -336,7 +327,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[7]:
+# In[ ]:
 
 
 def generate_soundbank(dataset, srate):
@@ -353,7 +344,7 @@ def generate_soundbank(dataset, srate):
     # pre-onset buffer are the samples before the onset starts
     # post-onset buffer are the samples after the onset starts
     # pre-onset + post-onset = frame size
-    pre_onset_buffer = 1024
+    pre_onset_buffer = 1025
     post_onset_buffer = 3072
     gaps = []
     segments = []
@@ -409,7 +400,7 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[8]:
+# In[ ]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
@@ -418,24 +409,28 @@ sound_bank = generate_soundbank(lofi, srate)
 # In[ ]:
 
 
+print(len(sound_bank[0]))
 ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
 
 
 # In[ ]:
 
 
+print(len(sound_bank[1]))
 ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
 # In[ ]:
 
 
+print(len(sound_bank[2]))
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
 
 
 # In[ ]:
 
 
+print(len(sound_bank[3]))
 ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 
@@ -444,7 +439,21 @@ ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 # In[ ]:
 
 
-def fitness_fn(genome, mfccs, afs):
+def cos_similarity(genome_mfcc, lofi_mfcc):
+    '''
+    Computes the cos similarity between a genome and the lofi genre
+    
+    params:
+        genome_mfcc: a generated audio data array
+        lofi_mfcc: the MFCC vectors of Lofi and non-Lofi
+        
+    returns:
+        similarity: A similarity rating between the two mfccs
+    '''
+    similarity = dot(genome_mfcc, lofi_mfcc)/(norm(genome_mfcc)*norm(lofi_mfcc))
+    return similarity
+
+def fitness_fn(genome, lofi_mfcc, afs):
     '''
     Determines if the given genome is fit enough
     
@@ -452,20 +461,42 @@ def fitness_fn(genome, mfccs, afs):
     
     params:
         genome: a generated audio data array
-        mfcss: the MFCC vectors of Lofi and non-Lofi
+        mfccs: the MFCC vectors of Lofi and non-Lofi
         afs: the Audio Fingerprints of Lofi and non-Lofi
         
     returns:
         fitness_value: A rating based on all produced heuristics
     '''
     # Heuristics
-    af = audio_fingerprint(genome)
-    mgcc = generate_mfcc(genome)
+    #af = audio_fingerprint(genome)
+    genome_samples = np.array([])
+    for sound in genome:
+        genome_samples = np.append(genome_samples, sound)
+    mfcc = generate_mfcc(genome_samples)
     
-    # TODO: create fitness_value based on heuristics
     fitness_value = 0
+    for lofi_mfcc in lofi_mfccs:
+        for i in range(len(mfcc)):
+            fitness_value += cos_similarity(mfcc[i], lofi_mfcc[i][:len(mfcc[i])])
+
+    return fitness_value/(len(mfcc)*len(lofi_mfccs))
+
+def get_positions(n, max_position):
+    '''
+    gets n random positions within range max_position
     
-    return fittness_value
+    params:
+        n: the number of random positions to return
+        max_position: the max position in the range
+        
+    returns:
+        positions: alist of positions
+    '''
+    positions = []
+    for i in range(int(n)):
+        positions.append(randint(0, max_position))
+
+    return positions
 
 
 def generate_genome(sound_bank):
@@ -478,8 +509,17 @@ def generate_genome(sound_bank):
     returns:
         genome: a random genome based of available sounds
     '''
-    #TODO
+    genome_max_length = 50
     genome = []
+    total = len(sound_bank[0]) + len(sound_bank[1]) + len(sound_bank[2]) + len(sound_bank[3])
+    for sound in sound_bank:
+        positions = get_positions(genome_max_length*(len(sound)/total), (len(sound)-1))
+        for position in positions:
+            if len(genome) < genome_max_length:
+                genome.append(sound[position])
+                
+    
+    shuffle(genome)
     return genome
 
 
@@ -533,13 +573,13 @@ def single_point_crossover(parents):
         raise ValueError("Genomes not equal length\n")
         
     split_point = randint(1, len(parent_a)-1)
-    child_a = parent_a[:split_pont] + parent_b[split_point:]
-    child_b = parent_b[:split_pont] + parent_a[split_point:]
+    child_a = parent_a[:split_point] + parent_b[split_point:]
+    child_b = parent_b[:split_point] + parent_a[split_point:]
     children = [child_a, child_b]
     return children
 
 
-def mutate(genome):
+def mutate(genome, sound_bank):
     '''
     Mutates values from a genome at random
     
@@ -549,11 +589,28 @@ def mutate(genome):
     returns:
         mutated_genome: a mutated verion of the inputed genome
     '''
-    #TODO
+    if random() > 0.75:
+        rand = randint(0, 109)
+        for i in range(10):
+            genome_position = randint(0, (len(genome)-1))
+            bank_num = randint(0, len(sound_bank)-1)
+            sound_position = randint(0, (len(sound_bank[bank_num])-1))
+            genome[genome_position] = sound_bank[bank_num][sound_position]
+            
+    while True:        
+        if random() > 0.40:
+            genome_position1 = randint(0, (len(genome)-1))
+            genome_position2 = randint(0, (len(genome)-1))
+            temp = genome[genome_position1]
+            genome[genome_position1] = genome[genome_position2]
+            genome[genome_position2] = temp
+        else:
+            break
+
     return genome
 
 
-def new_gen(population, weights):
+def new_gen(population, weights, sound_bank):
     '''
     Creates the next generations population
     
@@ -565,11 +622,9 @@ def new_gen(population, weights):
         new_population: A list of genomes ordered by rank
     '''
     new_population = []
-    for i in range(len(population)/2):
+    for i in range(int(len(population)/2)):
         parents = choose_parents(population, weights)
         children = single_point_crossover(parents)
-        for i in range(children):
-            children[i] = mutate(children[i])
         new_population += children
     
     return new_population
@@ -583,27 +638,66 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     
     params:
         sound_bank: the catagorized, grouped, sounds of lofi to use to make the audio clip.
-        mfcss: the MFCC vectors of Lofi and non-Lofi
+        mfccs: the MFCC vectors of Lofi and non-Lofi
         afs: the Audio Fingerprints of Lofi and non-Lofi
         
     returns:
         a data array of generated lofi
     '''
     # Number of generations until exit
-    generations = 100
+    generations = 10
     # Generate 6 unique melodies
-    population = generate_population(6, sound_bank)
+    population = generate_population(10, sound_bank)
     
     for gen in range(generations):
+        # Get comparison mfcc
+        lofi_mfccs = []
+        for i in range(5):
+            lofi_mfccs.append(choice(mfccs))
+        
         # Get weights
         weights = []
         for genome in population:
-            weights.append(fitness_fn(genome, mfcss, afs))
+            weights.append(fitness_fn(genome, lofi_mfccs, afs))
             
         # Create next generation genomes
-        population = new_gen(population, weights)
+        population = new_gen(population, weights, sound_bank)
+        weights = []
+        for genome in population:
+            weights.append(fitness_fn(genome, lofi_mfccs, afs))
+        worst = nsmallest(5, weights)
+        for i in range(len(weights)):
+            if weights[i] in worst:
+                mutate(population[i], sound_bank)
         
-    return population
+        
+    weights = []
+    for genome in population:
+        weights.append(fitness_fn(genome, lofi_mfccs, afs))
+    return population, weights
+
+
+# In[ ]:
+
+
+population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [])
+
+
+# In[ ]:
+
+
+print(weights)
+genome_samples = np.array([])
+for sound in population[6]:
+    genome_samples = np.append(genome_samples, sound)
+ipd.Audio(genome_samples, rate=22050)
+
+
+# In[ ]:
+
+
+import soundfile
+soundfile.write('weight_0.21.wav', genome_samples, 22050)
 
 
 # In[ ]:
