@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[6]:
 
 
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import IPython.display as ipd
-import mir_eval
+#import mir_eval
 import scipy
 import sklearn
 
@@ -23,7 +23,7 @@ from heapq import nsmallest
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[ ]:
+# In[7]:
 
 
 def _get_paths():
@@ -77,14 +77,14 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[ ]:
+# In[8]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[5]:
+# In[9]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
@@ -92,7 +92,7 @@ ipd.Audio(data=lofi[0], rate=srate)
 
 # ## Pre-processing
 
-# In[ ]:
+# In[14]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -130,7 +130,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[ ]:
+# In[12]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -172,7 +172,7 @@ def extract_spectral(data, srate, hop_length=512):
     return feature_vector
 
 
-# In[14]:
+# In[15]:
 
 
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
@@ -212,7 +212,7 @@ def fingerprint_hash(result):
     return freqList
 
 
-# In[13]:
+# In[16]:
 
 
 def audio_fingerprint(data, srate):
@@ -241,14 +241,13 @@ def audio_fingerprint(data, srate):
     return fingerprint
 
 
-# In[8]:
+# In[17]:
 
 
 finger_print = audio_fingerprint(lofi[0], srate)
-print(finger_print)
 
 
-# In[16]:
+# In[18]:
 
 
 def create_fingerprint_hashmap(data, paths):
@@ -287,11 +286,10 @@ for fingerprint in test_fp:
             song_scores[song_name] += 1
         else:
             song_scores[song_name] = 1
-            
-print(song_scores)
+        
 
 
-# In[ ]:
+# In[20]:
 
 
 def generate_mfcc(data):
@@ -311,14 +309,14 @@ def generate_mfcc(data):
 
 # ## Data Organization
 
-# In[ ]:
+# In[21]:
 
 
 #lofi_af = [audio_fingerprint(data) for data in lofi]
 non_lofi_af = [audio_fingerprint(data) for data in non_lofi]
 
 
-# In[ ]:
+# In[22]:
 
 
 lofi_mfccs = [generate_mfcc(data) for data in lofi]
@@ -327,7 +325,7 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[ ]:
+# In[23]:
 
 
 def generate_soundbank(dataset, srate):
@@ -400,7 +398,7 @@ def generate_soundbank(dataset, srate):
     return sound_groups
 
 
-# In[ ]:
+# In[24]:
 
 
 sound_bank = generate_soundbank(lofi, srate)
@@ -436,8 +434,31 @@ ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 # ## Genetic Algorithm
 
-# In[ ]:
+# In[96]:
 
+
+# tempo is in bpm, srate in samples per second
+# bps is beat per second = bpm / 60
+# frames allocated for a sound = srate / bps eg. 2 bpm = srate / 2 = 11000 frames for each
+def make_song_good(genome, tempo, timing):
+    bps = tempo / 60
+    frame_size = (srate / bps) / timing
+    frame_size = int(frame_size) + 1
+    song_size = frame_size * len(genome)
+    timed_genome = np.zeros(shape=song_size)
+  
+    for i in range(len(genome)):
+        section = i * frame_size
+        sound = genome[i]
+        if len(sound) > frame_size:
+            sound = sound[:frame_size]
+            for j in range(len(sound)):
+                timed_genome[section+j] = sound[j]
+        else:
+            for j in range(len(sound)):
+                timed_genome[section+j] = sound[j]
+    
+    return timed_genome
 
 def cos_similarity(genome_mfcc, lofi_mfcc):
     '''
@@ -469,9 +490,10 @@ def fitness_fn(genome, lofi_mfcc, afs):
     '''
     # Heuristics
     #af = audio_fingerprint(genome)
-    genome_samples = np.array([])
-    for sound in genome:
-        genome_samples = np.append(genome_samples, sound)
+#     genome_samples = np.array([])
+#     for sound in genome:
+#         genome_samples = np.append(genome_samples, sound)
+    genome_samples = make_song_good(genome, 60, 4)
     mfcc = generate_mfcc(genome_samples)
     
     fitness_value = 0
@@ -677,20 +699,30 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     return population, weights
 
 
-# In[ ]:
+# In[102]:
 
 
 population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [])
+print(len(population[6]))
 
 
-# In[ ]:
+# In[103]:
 
 
 print(weights)
 genome_samples = np.array([])
 for sound in population[6]:
     genome_samples = np.append(genome_samples, sound)
+print(genome_samples)
 ipd.Audio(genome_samples, rate=22050)
+
+
+# In[104]:
+
+
+timed_genome = make_song_good(population[6], 60, 4)
+print(timed_genome)
+ipd.Audio(timed_genome, rate=22050)
 
 
 # In[ ]:

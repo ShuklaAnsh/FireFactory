@@ -1,6 +1,8 @@
 # datasets
 **/data
 
+**/.DS_Store
+
 # IDE specific
 /.idea
 /.vscode
