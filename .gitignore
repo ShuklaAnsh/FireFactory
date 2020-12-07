@@ -1,5 +1,6 @@
 # datasets
 **/data
+**/*.wav
 
 **/.DS_Store
 
