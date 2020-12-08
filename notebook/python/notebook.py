@@ -437,34 +437,34 @@ def generate_soundbank(dataset, srate):
     return sound_groups, bps
 
 
-# In[17]:
+# In[ ]:
 
 
 sound_bank, bps = generate_soundbank(lofi, srate)
 
 
-# In[18]:
+# In[ ]:
 
 
 print(len(sound_bank[0]))
 ipd.Audio(np.concatenate(sound_bank[0]), rate=srate)
 
 
-# In[19]:
+# In[ ]:
 
 
 print(len(sound_bank[1]))
 ipd.Audio(np.concatenate(sound_bank[1]), rate=srate)
 
 
-# In[20]:
+# In[ ]:
 
 
 print(len(sound_bank[2]))
 ipd.Audio(np.concatenate(sound_bank[2]), rate=srate)
 
 
-# In[21]:
+# In[ ]:
 
 
 print(len(sound_bank[3]))
@@ -473,7 +473,7 @@ ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 # ## Genetic Algorithm
 
-# In[22]:
+# In[ ]:
 
 
 # tempo is in bpm, srate in samples per second
@@ -500,7 +500,7 @@ def make_song_good(genome, tempo, timing):
     return timed_genome
 
 
-# In[23]:
+# In[ ]:
 
 
 def trackify(genome):
@@ -528,7 +528,7 @@ def trackify(genome):
     return track
 
 
-# In[24]:
+# In[ ]:
 
 
 def cos_similarity(genome_mfcc, lofi_mfcc):
@@ -546,7 +546,7 @@ def cos_similarity(genome_mfcc, lofi_mfcc):
     return similarity
 
 
-# In[25]:
+# In[ ]:
 
 
 def fitness_fn(genome_track, lofi_mfcc, afs):
@@ -579,7 +579,7 @@ def fitness_fn(genome_track, lofi_mfcc, afs):
     return fitness_value/(len(mfcc)*len(lofi_mfccs))
 
 
-# In[26]:
+# In[ ]:
 
 
 def get_positions(n, max_position):
@@ -600,7 +600,7 @@ def get_positions(n, max_position):
     return positions
 
 
-# In[27]:
+# In[ ]:
 
 
 def generate_genome(sound_bank, bps):
@@ -640,7 +640,7 @@ def generate_genome(sound_bank, bps):
     return genome
 
 
-# In[28]:
+# In[ ]:
 
 
 def generate_population(pop_size, sound_bank, bps):
@@ -662,7 +662,7 @@ def generate_population(pop_size, sound_bank, bps):
     return population
 
 
-# In[29]:
+# In[ ]:
 
 
 def choose_parents(population, weights):
@@ -766,7 +766,7 @@ def new_gen(population, weights, sound_bank):
     return new_population
 
 
-# In[30]:
+# In[ ]:
 
 
 def genetic_algorithm(sound_bank, mfccs, afs, generations):
@@ -820,7 +820,7 @@ def genetic_algorithm(sound_bank, mfccs, afs, generations):
 # In[ ]:
 
 
-population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [], 10000)
+population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [], 5000)
 print(len(population[6]))
 
 
@@ -838,4 +838,10 @@ ipd.Audio(track, rate=srate)
 
 import soundfile
 soundfile.write(f'weight_{round(best_weight, 2)}.wav', track, srate)
+
+
+# In[ ]:
+
+
+
 
