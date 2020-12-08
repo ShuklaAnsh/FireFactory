@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[1]:
 
 
 import numpy as np
@@ -23,7 +23,7 @@ from heapq import nsmallest
 # ## Loading in the data
 # > The audio should be placed in the root directory inside a folder named "data". Inside the data folder there should be two folders, "lofi" and "non-lofi". Place the data you want in those folders accordingly
 
-# In[7]:
+# In[2]:
 
 
 def _get_paths():
@@ -77,22 +77,28 @@ def load_data(srate):
     return lofi_data_array, non_lofi_data_array
 
 
-# In[8]:
+# In[3]:
 
 
 srate = 22050
 lofi, non_lofi = load_data(srate)
 
 
-# In[9]:
+# In[4]:
 
 
 ipd.Audio(data=lofi[0], rate=srate)
 
 
+# In[5]:
+
+
+librosa.beat.tempo(lofi[2])[0] / 60
+
+
 # ## Pre-processing
 
-# In[14]:
+# In[6]:
 
 
 def feature_extraction(data, srate, hop_size=512 ):
@@ -130,7 +136,7 @@ def feature_extraction(data, srate, hop_size=512 ):
     return np.concatenate([features, spectral_features])
 
 
-# In[12]:
+# In[7]:
 
 
 # Taken from Jordie's 'Audio Feature Extraction' notebook
@@ -172,7 +178,7 @@ def extract_spectral(data, srate, hop_length=512):
     return feature_vector
 
 
-# In[15]:
+# In[8]:
 
 
 # interpreted from https://www.royvanrijn.com/blog/2010/06/creating-shazam-in-java/
@@ -212,7 +218,7 @@ def fingerprint_hash(result):
     return freqList
 
 
-# In[16]:
+# In[9]:
 
 
 def audio_fingerprint(data, srate):
@@ -241,20 +247,14 @@ def audio_fingerprint(data, srate):
     return fingerprint
 
 
-# In[17]:
-
-
-finger_print = audio_fingerprint(lofi[0], srate)
-
-
-# In[18]:
+# In[10]:
 
 
 def create_fingerprint_hashmap(data, paths):
     fingerprint_hashes = {}
     
     for i in range(len(data)):
-        song_name = str(paths[i])[13:]
+        song_name = paths[i].name
         fingerprint = audio_fingerprint(data[i], srate)
         for a_hash in fingerprint:
             if a_hash in fingerprint_hashes:
@@ -267,15 +267,15 @@ def create_fingerprint_hashmap(data, paths):
                 
 
 
-# In[19]:
+# In[11]:
 
 
 lofi_paths, non_lofi_paths = _get_paths()
 hashmap = create_fingerprint_hashmap(lofi, lofi_paths)
 max_len = 0
 
-test_fp = audio_fingerprint(lofi[51], srate)
-print(str(lofi_paths[51])[13:])
+test_fp = audio_fingerprint(lofi[0], srate)
+print(lofi_paths[0].name)
 
 song_scores = {}
 
@@ -289,7 +289,7 @@ for fingerprint in test_fp:
         
 
 
-# In[20]:
+# In[12]:
 
 
 def generate_mfcc(data):
@@ -309,14 +309,14 @@ def generate_mfcc(data):
 
 # ## Data Organization
 
-# In[21]:
+# In[13]:
 
 
 #lofi_af = [audio_fingerprint(data) for data in lofi]
 non_lofi_af = [audio_fingerprint(data) for data in non_lofi]
 
 
-# In[22]:
+# In[14]:
 
 
 lofi_mfccs = [generate_mfcc(data) for data in lofi]
@@ -325,7 +325,23 @@ non_lofi_mfccs = [generate_mfcc(data) for data in non_lofi]
 
 # ## Sound Bank Generation
 
-# In[23]:
+# In[15]:
+
+
+def smooth_sound(samples):
+    output = samples.copy()
+    num_samples = len(samples)
+    incr = [s/num_samples for s in range(0, num_samples)]
+    # Attack
+    for s in range(0, int(num_samples/2)):
+        output[s] = 2 * incr[s] * samples[s]
+    # Decay
+    for s in range(int(num_samples/2), num_samples):
+        output[s] = 2*(1 - incr[s]) * samples[s]
+    return output
+
+
+# In[16]:
 
 
 def generate_soundbank(dataset, srate):
@@ -344,9 +360,12 @@ def generate_soundbank(dataset, srate):
     # pre-onset + post-onset = frame size
     pre_onset_buffer = 1025
     post_onset_buffer = 3072
-    gaps = []
+    time_between_onsets = []
+    gap_onsets = []
+    time_between_gap_onsets = []
     segments = []
     features = []
+    gaps = []
     for data in dataset:
         onset_frames = librosa.onset.onset_detect(data)
         onset_samples = librosa.frames_to_samples(onset_frames)
@@ -358,20 +377,31 @@ def generate_soundbank(dataset, srate):
             frame_end = onset + post_onset_buffer
             if frame_start < 0 or frame_end > len(data):
                 continue
-            segment = data[frame_start:frame_end]
+            segment = smooth_sound(data[frame_start:frame_end])
             segments.append(segment)
             features.append(feature_extraction(segment, srate))
             
             # Extract Background Segments (Gaps)
             if idx+1 >= len(onset_samples):
                 continue
-            onset = onset_samples[idx]
             start_gap_sample = onset + post_onset_buffer
+            gap_onsets.append(start_gap_sample)
             end_gap_sample = onset_samples[idx+1] - pre_onset_buffer
             gap = []
             for gap_sample in range(start_gap_sample, end_gap_sample+1):
                 gap.append(data[gap_sample])
-            gaps.append(gap)
+            gaps.append(smooth_sound(gap))
+            
+            # Get time between onsets
+            samples_between_onsets = onset_samples[idx+1] - onset
+            time_between_onsets.append(samples_between_onsets/srate)
+            
+        # Get time between gaps
+        for idx in range(1, len(gap_onsets)-1):
+            samples_between_onsets = gap_onsets[idx] - gap_onsets[idx-1]
+            time_between_gap_onsets.append(samples_between_onsets/srate)
+        
+    time_between_gap_onsets = np.array(time_between_gap_onsets)
             
     min_max_scaler = sklearn.preprocessing.MinMaxScaler(feature_range=(-1,1))
     scaled_features = min_max_scaler.fit_transform(features)
@@ -386,22 +416,31 @@ def generate_soundbank(dataset, srate):
     plt.ylabel('Spectral Centroid (Scaled)')
     plt.legend(['Class 0', 'Class 1', 'Class 2'])
     plt.show()
-    
+       
     sound_groups = [[], [], [], gaps]
+    times = [[], [], []]
     for idx, segment in enumerate(segments):
         if labels[idx] == 0:
             sound_groups[0].append(segment)
+            if(idx < len(time_between_onsets)):
+                times[0].append(time_between_onsets[idx])
         elif labels[idx] == 1:
             sound_groups[1].append(segment)
+            if(idx < len(time_between_onsets)):
+                times[1].append(time_between_onsets[idx])
         else:
             sound_groups[2].append(segment)
-    return sound_groups
+            if(idx < len(time_between_onsets)):
+                times[2].append(time_between_onsets[idx])
+    
+    bps = [np.array(times[0]).mean(), np.array(times[1]).mean(), np.array(times[2]).mean(), time_between_gap_onsets.mean()]
+    return sound_groups, bps
 
 
-# In[24]:
+# In[ ]:
 
 
-sound_bank = generate_soundbank(lofi, srate)
+sound_bank, bps = generate_soundbank(lofi, srate)
 
 
 # In[ ]:
@@ -434,7 +473,7 @@ ipd.Audio(np.concatenate(sound_bank[3]), rate=srate)
 
 # ## Genetic Algorithm
 
-# In[96]:
+# In[ ]:
 
 
 # tempo is in bpm, srate in samples per second
@@ -460,6 +499,38 @@ def make_song_good(genome, tempo, timing):
     
     return timed_genome
 
+
+# In[ ]:
+
+
+def trackify(genome):
+    track1 = np.concatenate(genome[0])
+    track2 = np.concatenate(genome[1])
+    track3 = np.concatenate(genome[2])
+    
+    length = max(len(track1), len(track2), len(track3))
+    
+    track1 = np.pad(track1, (0, length-len(track1)))
+    track2 = np.pad(track2, (0, length-len(track2)))
+    track3 = np.pad(track3, (0, length-len(track3)))
+    
+    gaps = []
+    
+    while len(gaps) < length:
+        gaps = np.concatenate((gaps, sound_bank[3][randint(0, len(sound_bank[3])-1)]))
+    
+    if len(gaps) < length:
+        gaps = np.pad(gaps, (0, length-len(gaps)))
+    else:
+        gaps = gaps[:length]
+    
+    track = track1 + track2 + track3 + gaps
+    return track
+
+
+# In[ ]:
+
+
 def cos_similarity(genome_mfcc, lofi_mfcc):
     '''
     Computes the cos similarity between a genome and the lofi genre
@@ -474,7 +545,11 @@ def cos_similarity(genome_mfcc, lofi_mfcc):
     similarity = dot(genome_mfcc, lofi_mfcc)/(norm(genome_mfcc)*norm(lofi_mfcc))
     return similarity
 
-def fitness_fn(genome, lofi_mfcc, afs):
+
+# In[ ]:
+
+
+def fitness_fn(genome_track, lofi_mfcc, afs):
     '''
     Determines if the given genome is fit enough
     
@@ -493,8 +568,8 @@ def fitness_fn(genome, lofi_mfcc, afs):
 #     genome_samples = np.array([])
 #     for sound in genome:
 #         genome_samples = np.append(genome_samples, sound)
-    genome_samples = make_song_good(genome, 60, 4)
-    mfcc = generate_mfcc(genome_samples)
+#     genome_samples = make_song_good(genome, 60, 4)
+    mfcc = generate_mfcc(genome_track)
     
     fitness_value = 0
     for lofi_mfcc in lofi_mfccs:
@@ -502,6 +577,10 @@ def fitness_fn(genome, lofi_mfcc, afs):
             fitness_value += cos_similarity(mfcc[i], lofi_mfcc[i][:len(mfcc[i])])
 
     return fitness_value/(len(mfcc)*len(lofi_mfccs))
+
+
+# In[ ]:
+
 
 def get_positions(n, max_position):
     '''
@@ -521,9 +600,17 @@ def get_positions(n, max_position):
     return positions
 
 
-def generate_genome(sound_bank):
+# In[ ]:
+
+
+def generate_genome(sound_bank, bps):
     '''
-    Creates a random genome from available sounds
+    Creates a random genomes from available sounds
+    Genome follows same sound type pattern as sound bank
+        [0] - class 1
+        [1] - class 2
+        [2] - class 3
+        [3] - gaps
     
     params:
         sounds: the possible sounds to be uses for creating genomes
@@ -531,21 +618,32 @@ def generate_genome(sound_bank):
     returns:
         genome: a random genome based of available sounds
     '''
-    genome_max_length = 50
-    genome = []
     total = len(sound_bank[0]) + len(sound_bank[1]) + len(sound_bank[2]) + len(sound_bank[3])
-    for sound in sound_bank:
-        positions = get_positions(genome_max_length*(len(sound)/total), (len(sound)-1))
-        for position in positions:
-            if len(genome) < genome_max_length:
-                genome.append(sound[position])
-                
+    num_sounds = 50
+    sound_len = len(sound_bank[0][0])
+    genome = [[], [], [], []]
     
-    shuffle(genome)
+    for sound_type, sounds in enumerate(sound_bank):
+        filler = np.zeros(sound_len)
+        num_sounds_type = (sound_len / srate) * bps[sound_type] * 10 * num_sounds
+        bank_idicies = get_positions(num_sounds_type, (len(sounds)-1))
+        
+        for i in bank_idicies:
+            if len(genome[sound_type]) >= num_sounds_type:
+                break
+            genome[sound_type].append(sounds[i])
+        
+        while len(genome[sound_type]) < num_sounds:
+            genome[sound_type].append(filler)
+        
+        shuffle(genome[sound_type])
     return genome
 
 
-def generate_population(pop_size, sound_bank):
+# In[ ]:
+
+
+def generate_population(pop_size, sound_bank, bps):
     '''
     Creates pop_size number of genomes from available sounds
     
@@ -559,9 +657,12 @@ def generate_population(pop_size, sound_bank):
     population = []
     
     for i in range(pop_size):
-        population.append(generate_genome(sound_bank))
+        population.append(generate_genome(sound_bank, bps))
         
     return population
+
+
+# In[ ]:
 
 
 def choose_parents(population, weights):
@@ -611,21 +712,34 @@ def mutate(genome, sound_bank):
     returns:
         mutated_genome: a mutated verion of the inputed genome
     '''
-    if random() > 0.75:
-        rand = randint(0, 109)
-        for i in range(10):
-            genome_position = randint(0, (len(genome)-1))
-            bank_num = randint(0, len(sound_bank)-1)
-            sound_position = randint(0, (len(sound_bank[bank_num])-1))
-            genome[genome_position] = sound_bank[bank_num][sound_position]
+    # Exchange sounds from sound bank
+    while True:
+        if random() > 0.75:
+            while True:
+                sound_type = randint(0, len(sound_bank)-1)
+                genome_idx = randint(0, len(genome[sound_type])-1)
+                bank_idx = randint(0, len(sound_bank[sound_type])-1)
+                # if genome_idx isnt empty filler, replace with a sound from da bank
+                if np.any(genome[sound_type][genome_idx]):
+                    genome[sound_type][genome_idx] = sound_bank[sound_type][bank_idx]
+                    break
+        else:
+            break
             
+    # Exchange sounds from within genome
     while True:        
         if random() > 0.40:
-            genome_position1 = randint(0, (len(genome)-1))
-            genome_position2 = randint(0, (len(genome)-1))
-            temp = genome[genome_position1]
-            genome[genome_position1] = genome[genome_position2]
-            genome[genome_position2] = temp
+            while True:
+                sound_type = randint(0, len(sound_bank)-1)
+                genome_idx1 = randint(0, len(genome[sound_type])-1)
+                genome_idx2 = randint(0, len(genome[sound_type])-1)
+                
+                # if either genome_idx isnt empty filler, swap
+                if np.any(genome[sound_type][genome_idx1]) or np.any(genome[sound_type][genome_idx2]):
+                    temp = genome[sound_type][genome_idx1]
+                    genome[sound_type][genome_idx1] = genome[sound_type][genome_idx2]
+                    genome[sound_type][genome_idx2] = temp
+                    break
         else:
             break
 
@@ -652,7 +766,10 @@ def new_gen(population, weights, sound_bank):
     return new_population
 
 
-def genetic_algorithm(sound_bank, mfccs, afs):
+# In[ ]:
+
+
+def genetic_algorithm(sound_bank, mfccs, afs, generations):
     '''
     Generates a lofi audio clip using a genetic algorithm
     
@@ -666,10 +783,9 @@ def genetic_algorithm(sound_bank, mfccs, afs):
     returns:
         a data array of generated lofi
     '''
-    # Number of generations until exit
-    generations = 10
+
     # Generate 6 unique melodies
-    population = generate_population(10, sound_bank)
+    population = generate_population(10, sound_bank, bps)
     
     for gen in range(generations):
         # Get comparison mfcc
@@ -680,56 +796,48 @@ def genetic_algorithm(sound_bank, mfccs, afs):
         # Get weights
         weights = []
         for genome in population:
-            weights.append(fitness_fn(genome, lofi_mfccs, afs))
+            genome_track = trackify(genome)
+            weights.append(fitness_fn(genome_track, lofi_mfccs, afs))
             
         # Create next generation genomes
         population = new_gen(population, weights, sound_bank)
         weights = []
         for genome in population:
-            weights.append(fitness_fn(genome, lofi_mfccs, afs))
+            genome_track = trackify(genome)
+            weights.append(fitness_fn(genome_track, lofi_mfccs, afs))
         worst = nsmallest(5, weights)
         for i in range(len(weights)):
             if weights[i] in worst:
                 mutate(population[i], sound_bank)
         
-        
     weights = []
     for genome in population:
-        weights.append(fitness_fn(genome, lofi_mfccs, afs))
+        genome_track = trackify(genome)
+        weights.append(fitness_fn(genome_track, lofi_mfccs, afs))
     return population, weights
 
 
-# In[102]:
+# In[ ]:
 
 
-population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [])
+population, weights = genetic_algorithm(sound_bank, lofi_mfccs, [], 5000)
 print(len(population[6]))
 
 
-# In[103]:
+# In[ ]:
 
 
-print(weights)
-genome_samples = np.array([])
-for sound in population[6]:
-    genome_samples = np.append(genome_samples, sound)
-print(genome_samples)
-ipd.Audio(genome_samples, rate=22050)
-
-
-# In[104]:
-
-
-timed_genome = make_song_good(population[6], 60, 4)
-print(timed_genome)
-ipd.Audio(timed_genome, rate=22050)
+best_weight = max(weights)
+best_genome = population[np.argmax(weights)]
+track = trackify(best_genome)
+ipd.Audio(track, rate=srate)
 
 
 # In[ ]:
 
 
 import soundfile
-soundfile.write('weight_0.21.wav', genome_samples, 22050)
+soundfile.write(f'weight_{round(best_weight, 2)}.wav', track, srate)
 
 
 # In[ ]:
